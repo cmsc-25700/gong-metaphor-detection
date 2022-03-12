@@ -41,7 +41,7 @@ vua_seq_data = {
 output_dir = os.path.join("data", "VUA")
 
 
-def function_convert_raw_vua_data(input_data_list, output_dir, data_subset, starting_id):
+def convert_raw_vua_data(input_data_list, output_dir, data_subset, starting_id):
     """
     Convert csv vua data to Gong et all format
     """
@@ -97,4 +97,4 @@ def function_convert_raw_vua_data(input_data_list, output_dir, data_subset, star
 
 initial_id = 1
 for subset, data in vua_seq_data.items():
-    initial_id = function_convert_raw_vua_data(data, output_dir, subset, initial_id)
+    initial_id = convert_raw_vua_data(data, output_dir, subset, initial_id)

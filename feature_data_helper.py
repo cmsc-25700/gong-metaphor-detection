@@ -1,7 +1,10 @@
 """
-feature_utils.py
- - process metaphor features
+feature_utils.py from https://github.com/HongyuGong/MetaphorDetectionSharedTask
+ - process metaphor data
+
+CI: NO LONGER USED IN OUR CODE
 """
+
 import argparse
 import logging
 import os

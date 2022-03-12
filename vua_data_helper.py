@@ -1,14 +1,13 @@
 """
-vua_data_helper.py
+vua_data_helper.py from https://github.com/HongyuGong/MetaphorDetectionSharedTask
  - process VUA data
+
+CI: I removed references to external features
 """
 
-import logging
 import os
-import sys
 import numpy as np
-import pickle
-from data_utils import InputExample, InputFeatures, _parse_str_vector
+from data_utils import InputExample, InputFeatures
 
 
 def read_vua_examples_from_file(data_folder, mode):
@@ -173,7 +172,3 @@ def convert_vua_examples_to_features(
     #print("feature_dim_dict: {}".format(feature_dim_dict))
     # print("feature_dim: {}".format(sum([feature_dim_dict[f] for f in feature_dim_dict])))
     return features
-
-
-    
-

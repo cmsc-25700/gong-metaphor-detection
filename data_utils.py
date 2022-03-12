@@ -1,12 +1,11 @@
 """
-data_utils.py
+data_utils.py from https://github.com/HongyuGong/MetaphorDetectionSharedTask
  - process metaphor data
+
+CI: I removed references to external features
 """
 
 import os
-import sys
-import numpy as np
-import pickle
 
 
 class InputExample(object):

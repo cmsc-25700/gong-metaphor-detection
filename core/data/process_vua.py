@@ -1,6 +1,7 @@
 """
 Process vua data per repo instructions:
 Obtain the datasets (VUA or TOEFL).
+
 Extract from the train data the:
     token ids,
     tokens,

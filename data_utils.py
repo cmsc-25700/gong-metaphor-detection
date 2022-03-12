@@ -33,6 +33,7 @@ class InputFeatures(object):
 
 def read_pos_tags(data_folder, pos_pad="POSPAD"):
     pos_set = set()
+    # CI: for the POS vocab from train
     pos_file = open(os.path.join(data_folder,"train_pos.txt"),"r")
     for pos_line in pos_file:
         for pos in pos_line.strip().split():

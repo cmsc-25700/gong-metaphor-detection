@@ -29,7 +29,7 @@ class RobertaForMetaphorDetection(BertPreTrainedModel):
         self.num_labels = config.num_labels
         #self.use_init_embed = use_init_embed
         self.use_pos = use_pos
-        self.use_features = use_features
+        self.use_features = False
         #self.pos_vocab_size = config.pos_vocab_size
         #self.pos_dim = config.pos_dim
 

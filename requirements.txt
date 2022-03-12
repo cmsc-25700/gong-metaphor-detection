@@ -1,0 +1,6 @@
+# christie
+pandas
+jsonlines
+transformers
+torch
+scikit-learn

@@ -172,10 +172,7 @@ def train(args, train_dataset, dev_dataset, model, class_weights,
 
             model.train()
             batch = tuple(t.to(args.device) for t in batch)
-            inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], \
-                      "biasdown_vectors": batch[4], "biasup_vectors": batch[5], "biasupdown_vectors": batch[6], \
-                      "corp_vectors": batch[7], "topic_vectors": batch[8], "verbnet_vectors": batch[9], \
-                      "wordnet_vectors": batch[10], "labels": batch[11], "class_weights": weights}
+            inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": batch[4], "class_weights": weights}
             if args.model_type != "distilbert":
                 inputs["token_type_ids"] = (
                     batch[2] if args.model_type in ["bert", "xlnet"] else None
@@ -301,16 +298,10 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode)
         batch = tuple(t.to(args.device) for t in batch)
         with torch.no_grad():
             if mode == "test":
-                inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], \
-                          "biasdown_vectors": batch[4], "biasup_vectors": batch[5], "biasupdown_vectors": batch[6], \
-                          "corp_vectors": batch[7], "topic_vectors": batch[8], "verbnet_vectors": batch[9], \
-                          "wordnet_vectors": batch[10], "labels": None}
+                inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": None}
             else:
                 weights = torch.FloatTensor(class_weights).to(args.device)
-                inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], \
-                          "biasdown_vectors": batch[4], "biasup_vectors": batch[5], "biasupdown_vectors": batch[6], \
-                          "corp_vectors": batch[7], "topic_vectors": batch[8], "verbnet_vectors": batch[9], \
-                          "wordnet_vectors": batch[10], "labels": batch[11], "class_weights": weights}
+                inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": batch[4], "class_weights": weights}
             if args.model_type != "distilbert":
                 inputs["token_type_ids"] = (
                     batch[2] if args.model_type in ["bert", "xlnet"] else None
@@ -380,19 +371,10 @@ def convert_features_to_dataset(features):
     all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
     all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
     all_pos_ids = torch.tensor([f.pos_ids for f in features], dtype=torch.long)
-    # external features
-    all_biasdown_vectors = torch.FloatTensor([f.biasdown_vectors for f in features])
-    all_biasup_vectors = torch.FloatTensor([f.biasup_vectors for f in features])
-    all_biasupdown_vectors = torch.FloatTensor([f.biasupdown_vectors for f in features])
-    all_corp_vectors = torch.FloatTensor([f.corp_vectors for f in features])
-    all_topic_vectors = torch.FloatTensor([f.topic_vectors for f in features])
-    all_verbnet_vectors = torch.FloatTensor([f.verbnet_vectors for f in features])
-    all_wordnet_vectors = torch.FloatTensor([f.wordnet_vectors for f in features])
+
     all_label_ids = torch.tensor([f.label_ids for f in features], dtype=torch.long)
     
     dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_pos_ids,
-                            all_biasdown_vectors, all_biasup_vectors, all_biasupdown_vectors,
-                            all_corp_vectors, all_topic_vectors, all_verbnet_vectors, all_wordnet_vectors,
                             all_label_ids)
     return dataset
 

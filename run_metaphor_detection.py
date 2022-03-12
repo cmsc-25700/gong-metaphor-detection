@@ -332,7 +332,7 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode)
             if inputs["labels"] is not None:
                 out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
             else:
-                out_label_ids = np.append(out_label_ids, batch[11].detach().cpu().numpy(), axis=0)
+                out_label_ids = np.append(out_label_ids, batch[4].detach().cpu().numpy(), axis=0)
 
     eval_loss = eval_loss / nb_eval_steps
     # pred_labels: (batch_size, max_seq_len)

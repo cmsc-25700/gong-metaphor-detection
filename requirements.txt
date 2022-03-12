@@ -1,6 +1,5 @@
 # christie
-pandas
-jsonlines
 transformers
 torch
+pandas
 scikit-learn

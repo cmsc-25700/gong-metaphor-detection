@@ -4,16 +4,19 @@ import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss, MSELoss
 
-from transformers.configuration_roberta import RobertaConfig
-from transformers.file_utils import add_start_docstrings, add_start_docstrings_to_callable
-from transformers.modeling_bert import BertEmbeddings, BertLayerNorm, BertModel, \
-     BertPreTrainedModel, gelu
-from transformers.modeling_roberta import RobertaEmbeddings, RobertaModel, \
-     ROBERTA_PRETRAINED_MODEL_ARCHIVE_MAP, \
-     ROBERTA_INPUTS_DOCSTRING
-
+from transformers import RobertaConfig
+from transformers import BertPreTrainedModel
+from transformers import RobertaModel
 logger = logging.getLogger(__name__)
 
+ROBERTA_PRETRAINED_MODEL_ARCHIVE_MAP = {
+    'roberta-base': "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-base-pytorch_model.bin",
+    'roberta-large': "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-large-pytorch_model.bin",
+    'roberta-large-mnli': "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-large-mnli-pytorch_model.bin",
+    'distilroberta-base': "https://s3.amazonaws.com/models.huggingface.co/bert/distilroberta-base-pytorch_model.bin",
+    'roberta-base-openai-detector': "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-base-openai-detector-pytorch_model.bin",
+    'roberta-large-openai-detector': "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-large-openai-detector-pytorch_model.bin",
+}
 
 class RobertaForMetaphorDetection(BertPreTrainedModel):
     config_class = RobertaConfig
@@ -66,7 +69,6 @@ class RobertaForMetaphorDetection(BertPreTrainedModel):
 
         self.init_weights()
 
-    @add_start_docstrings_to_callable(ROBERTA_INPUTS_DOCSTRING)
     def forward(
         self,
         input_ids=None,

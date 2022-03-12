@@ -1,4 +1,4 @@
-python3 python3 run_metaphor_detection.py \
+python3 run_metaphor_detection.py \
 --data_dir data/VUA \
 --model_type roberta \
 --model_name_or_path roberta-large \

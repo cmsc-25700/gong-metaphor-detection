@@ -17,11 +17,11 @@ def read_vua_examples_from_file(data_folder, mode):
     @param label_file: word labels separated by space, 1: metaphor, 0: non-metaphor
     """
     examples = []
-    prefix = data_folder + mode + "_"
+    prefix = data_folder
     if mode == "train":
-        sent_file = open(os.path.join(prefix,"tokens.txt"), "r")
-        pos_file = open(os.path.join(prefix,"pos.txt"), "r")
-        label_file = open(os.path.join(prefix,"metaphor.txt"), "r")
+        sent_file = open(os.path.join(prefix, mode+"_"+"tokens.txt"), "r")
+        pos_file = open(os.path.join(prefix, mode+"_"+"pos.txt"), "r")
+        label_file = open(os.path.join(prefix, mode+"_"+"metaphor.txt"), "r")
         example_id = 0
         for (sent_line, pos_line, label_line) in \
              zip(sent_file, pos_file, label_file):
@@ -37,8 +37,8 @@ def read_vua_examples_from_file(data_folder, mode):
         label_file.close()
     # test data does not have labels
     elif mode == "test":
-        sent_file = open(os.path.join(prefix,"tokens.txt"), "r")
-        pos_file = open(os.path.join(prefix,"pos.txt"), "r")
+        sent_file = open(os.path.join(prefix, mode+"_"+"tokens.txt"), "r")
+        pos_file = open(os.path.join(prefix, mode+"_"+"pos.txt"), "r")
         example_id = 0
         for (sent_line, pos_line) in \
              zip(sent_file, pos_file):

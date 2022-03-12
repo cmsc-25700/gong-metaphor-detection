@@ -1,4 +1,4 @@
-python3 run_metaphor_detection.py --data_dir data/VUA --model_type roberta --model_name_or_path roberta-large --output_dir output/VUA/model/ --dataset VUA --use_features= False
+python3 run_metaphor_detection.py --data_dir data/VUA --model_type roberta --model_name_or_path roberta-large --output_dir output/VUA/model/ --dataset VUA --num_train_epochs 5.0 --use_pos
 #--do_lower_case
 #--per_gpu_train_batch_size 6
 #--per_gpu_eval_batch_size 18

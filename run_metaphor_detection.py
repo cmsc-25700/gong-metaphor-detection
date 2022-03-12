@@ -325,7 +325,7 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode)
             if inputs["labels"] is not None:
                 out_label_ids = inputs["labels"].detach().cpu().numpy()
             else:
-                out_label_ids = batch[11].detach().cpu().numpy()
+                out_label_ids = batch[4].detach().cpu().numpy()
         else:
             #preds = np.append(preds, probs.detach().cpu().numpy(), axis=0)
             preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)

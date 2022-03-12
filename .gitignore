@@ -1,5 +1,7 @@
 # data resources
 __MACOSX/*
+output/*
+data/VUA/cached_train_roberta-large_256
 
 **/.DS_Store
 

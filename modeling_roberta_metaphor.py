@@ -18,6 +18,7 @@ ROBERTA_PRETRAINED_MODEL_ARCHIVE_MAP = {
     'roberta-large-openai-detector': "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-large-openai-detector-pytorch_model.bin",
 }
 
+
 class RobertaForMetaphorDetection(BertPreTrainedModel):
     config_class = RobertaConfig
     pretrained_model_archive_map = ROBERTA_PRETRAINED_MODEL_ARCHIVE_MAP
@@ -157,6 +158,3 @@ class RobertaForMetaphorDetection(BertPreTrainedModel):
             outputs = (loss,) + outputs
 
         return outputs  # (loss), scores, (hidden_states), (attentions)
-
-
-

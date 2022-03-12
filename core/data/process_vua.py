@@ -87,7 +87,7 @@ def convert_raw_vua_data(input_data_list, output_dir, data_subset, starting_id):
             pos_f.write(pos+'\n')
             labels_f.write(labels +'\n')
 
-        genre_map[id] = genre
+            genre_map[id] = genre
 
         # write maps
         write_dict_to_json(genre_map_file_name, genre_map)
@@ -95,6 +95,8 @@ def convert_raw_vua_data(input_data_list, output_dir, data_subset, starting_id):
         return starting_id
 
 
-initial_id = 1
+initial_id = 0
 for subset, data in vua_seq_data.items():
+    # if the gong code starts every id at 0 (for train and test), we should change this
+    # to do the same thing
     initial_id = convert_raw_vua_data(data, output_dir, subset, initial_id)

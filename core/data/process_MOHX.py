@@ -44,7 +44,7 @@ def function_convert_raw_vua_data(input_data_list, output_dir, data_subset, star
     # files for gong et all
     id_file_name = os.path.join(output_dir, "{}_ids.txt".format(data_subset))
     tokens_file_name = os.path.join(output_dir, "{}_tokens.txt".format(data_subset))
-    pos_file_name = os.path.join(output_dir, "{}_pos.txt".format(data_subset))
+    metaphor_pos_file_name = os.path.join(output_dir, "{}_metaphor_pos.txt".format(data_subset))
     metaphor_file_name = os.path.join(output_dir, "{}_metaphor.txt".format(data_subset)) # labels
 
     # extra files
@@ -66,14 +66,17 @@ def function_convert_raw_vua_data(input_data_list, output_dir, data_subset, star
 
     # this will cause last line in file to be blank
     # if that's a problem save data in list then write at once
-    with open(id_file_name, 'w') as id_f, open(tokens_file_name, 'w') as tok_f, open(pos_file_name, 'w') as pos_f, open(metaphor_file_name, 'w') as labels_f:
+    with open(id_file_name, 'w') as id_f, open(tokens_file_name, 'w') as tok_f, open(metaphor_pos_file_name, 'w') as pos_f, open(metaphor_file_name, 'w') as labels_f:
         for line in input_data_list:
             id_tuple = str(starting_id) + "-" + line[WORD_IDX]
             if id_tuple not in id_map:
                 id_map[id_tuple] = starting_id
                 starting_id += 1
             id = id_map[id_tuple]
-            label = ' '.join([str(ast.literal_eval(line[LABEL_IDX]))])
+            num_words = len(line[TOKENS_IDX].split())
+            labels = [str(0)] * num_words
+            labels[int(line[POS_IDX])] = line[LABEL_IDX]
+            label = ' '.join(labels)
             pos = ' '.join(str(ast.literal_eval(line[POS_IDX])))
 
             # write files for gong et al format

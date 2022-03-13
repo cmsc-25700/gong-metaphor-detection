@@ -2,6 +2,7 @@
 __MACOSX/*
 output/*
 data/VUA/cached_train_roberta-large_256
+.idea/*
 
 **/.DS_Store
 

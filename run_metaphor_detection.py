@@ -751,9 +751,6 @@ def main():
                 line = " ".join([str(label) for label in predictions[eid]])
                 writer.write(line+"\n")
         logger.info("Saving predictions to {}".format(output_test_predictions_file))
-        logger.info("***** Eval results *****")
-        for key in sorted(result.keys()):
-            logger.info("  %s = %s", key, str(result[key]))
 
 
 if __name__=="__main__":

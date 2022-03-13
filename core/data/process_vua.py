@@ -32,10 +32,12 @@ input_data_path = os.path.join("resources", "metaphor-in-context", "data")
 gao_data = ExperimentData(input_data_path)
 gao_data.read_vua_seq_data()
 
+#merging the val set into the train set
+gao_data.vua_seq_formatted_train.extend(gao_data.vua_seq_formatted_val)
+
 vua_seq_data = {
     "train": gao_data.vua_seq_formatted_train,
     "test": gao_data.vua_seq_formatted_test,
-    "val": gao_data.vua_seq_formatted_val
 }
 
 output_dir = os.path.join("data", "VUA")

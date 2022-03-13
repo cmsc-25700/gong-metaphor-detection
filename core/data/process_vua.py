@@ -32,16 +32,18 @@ input_data_path = os.path.join("resources", "metaphor-in-context", "data")
 gao_data = ExperimentData(input_data_path)
 gao_data.read_vua_seq_data()
 
+#merging the val set into the train set
+gao_data.vua_seq_formatted_train.extend(gao_data.vua_seq_formatted_val)
+
 vua_seq_data = {
     "train": gao_data.vua_seq_formatted_train,
     "test": gao_data.vua_seq_formatted_test,
-    "val": gao_data.vua_seq_formatted_val
 }
 
 output_dir = os.path.join("data", "VUA")
 
 
-def function_convert_raw_vua_data(input_data_list, output_dir, data_subset, starting_id):
+def convert_raw_vua_data(input_data_list, output_dir, data_subset, starting_id):
     """
     Convert csv vua data to Gong et all format
     """
@@ -87,7 +89,7 @@ def function_convert_raw_vua_data(input_data_list, output_dir, data_subset, star
             pos_f.write(pos+'\n')
             labels_f.write(labels +'\n')
 
-        genre_map[id] = genre
+            genre_map[id] = genre
 
         # write maps
         write_dict_to_json(genre_map_file_name, genre_map)
@@ -95,6 +97,8 @@ def function_convert_raw_vua_data(input_data_list, output_dir, data_subset, star
         return starting_id
 
 
-initial_id = 1
+initial_id = 0
 for subset, data in vua_seq_data.items():
-    initial_id = function_convert_raw_vua_data(data, output_dir, subset, initial_id)
+    # if the gong code starts every id at 0 (for train and test), we should change this
+    # to do the same thing
+    initial_id = convert_raw_vua_data(data, output_dir, subset, initial_id)

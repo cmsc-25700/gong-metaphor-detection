@@ -453,10 +453,10 @@ def load_and_cache_examples(args, tokenizer, pad_token_label_id, mode):
         features = torch.load(cached_features_file)
     else:
         logger.info("Creating features from dataset file at %s", args.data_dir)
-        # create pos vocab
-        pos_vocab = read_pos_tags(args.data_dir)
         if args.dataset.lower() == "vua":
             print('vua')
+            # create pos vocab
+            pos_vocab = read_pos_tags(args.data_dir)
             examples = read_vua_examples_from_file(args.data_dir, mode)
             features = convert_vua_examples_to_features(
                 examples,

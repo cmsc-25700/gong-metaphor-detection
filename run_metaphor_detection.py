@@ -52,7 +52,7 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 def train(args, train_dataset, dev_dataset, model, class_weights,
-          tokenizer, pad_token_label_id, pos_id = True):
+          tokenizer, pad_token_label_id, use_pos = True):
     """ Train the model """
     #if args.local_rank in [-1, 0]:
     #    tb_writer = SummaryWriter()
@@ -155,8 +155,9 @@ def train(args, train_dataset, dev_dataset, model, class_weights,
             model.train()
             batch = tuple(t.to(args.device) for t in batch)
             ### DT Account for input difference
-            if pos_id:
-                inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": batch[4], "class_weights": weights}
+            if use_pos:
+                inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3],
+                          "labels": batch[4], "class_weights": weights}
             else:
                 inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": None,
                           "labels": batch[3], "class_weights": weights}
@@ -167,6 +168,7 @@ def train(args, train_dataset, dev_dataset, model, class_weights,
 
             outputs = model(**inputs)
             loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
+            print(f"Shape of loss: {loss.shape}")
 
             if args.n_gpu > 1:
                 loss = loss.mean()  # mean() to average on multi-gpu parallel training
@@ -199,10 +201,10 @@ def train(args, train_dataset, dev_dataset, model, class_weights,
                         if args.dataset.lower() == "vua" or args.dataset.lower() == "toefl":
                             results, _ = evaluate(args, model, dev_dataset, pad_token_label_id,
                                                   class_weights, mode="dev")
-                        else:
-                            target_id = batch[4]
+                        else: # this is for TroFi and MOH-X data
+                            target_ids = batch[4]
                             results, _ = evaluate(args, model, dev_dataset, pad_token_label_id,
-                                                  class_weights, mode="dev", pos_id=False, target_id=target_id)
+                                                  class_weights, mode="dev", use_pos=False, target_ids=target_ids)
                         if results['f1'] > best_score:
                             best_score = results['f1']
                             logger.info("Best dev f1 score: {}".format(best_score))
@@ -267,7 +269,8 @@ def train(args, train_dataset, dev_dataset, model, class_weights,
     return global_step, tr_loss / global_step
 
 
-def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode, pos_id = True, target_id = None):
+def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
+             mode, use_pos = True, target_ids = None):
     args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
     # Note that DistributedSampler samples randomly
     eval_sampler = SequentialSampler(eval_dataset) if args.local_rank == -1 else DistributedSampler(eval_dataset)
@@ -290,15 +293,16 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode,
         batch = tuple(t.to(args.device) for t in batch)
         with torch.no_grad():
             if mode == "test":
-                # ci may need to be updated for pos
-                inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": None}
-            else:
+                if use_pos:
+                    inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": None}
+                else:
+                    inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": None, "labels": None}
+            else: # mode is not "test"
                 weights = torch.FloatTensor(class_weights).to(args.device)
-                if pos_id:
+                if use_pos:
                     inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": batch[4], "class_weights": weights}
                 else:
-                    inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": None,
-                              "labels": batch[3], "class_weights": weights}
+                    inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": None, "labels": batch[3], "class_weights": weights}
 
             if args.model_type != "distilbert":
                 inputs["token_type_ids"] = (
@@ -308,12 +312,13 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode,
             if mode == "test":
                 logits = outputs[0]
 
-            else:
+            else: # mode is not "test"
                 tmp_eval_loss, logits = outputs[:2]
 
             #probs = torch.nn.functional.softmax(logits, dim=-1)
 
             if args.n_gpu > 1 and mode != "test" :
+                print(f"temp_eval_loss shape{temp_eval_loss.shape}")
                 tmp_eval_loss = tmp_eval_loss.mean()  # mean() to average on multi-gpu parallel evaluating
                 eval_loss += tmp_eval_loss.item()
                 
@@ -326,7 +331,8 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode,
 
             else:
                 # ci also may need to be updated for no pos
-                out_label_ids = batch[4].detach().cpu().numpy()
+                label_index = 4 if use_pos else 3
+                out_label_ids = batch[label_index].detach().cpu().numpy()
         else:
             #preds = np.append(preds, probs.detach().cpu().numpy(), axis=0)
             preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
@@ -334,16 +340,17 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode,
                 out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
             else:
                 # ci also may need to be updated for no pos
-                out_label_ids = np.append(out_label_ids, batch[4].detach().cpu().numpy(), axis=0)
+                label_index = 4 if use_pos else 3
+                out_label_ids = np.append(out_label_ids, batch[label_index].detach().cpu().numpy(), axis=0)
 
     eval_loss = eval_loss / nb_eval_steps
     # pred_labels: (batch_size, max_seq_len)
     pred_labels = np.argmax(preds, axis=2)
-    if target_id is not None:
-        print(target_id.shape)
-        target_id = target_id.detach().cpu().numpy()
-        print(target_id)
-        len_targets = target_id.sum()
+    if target_ids:
+        print(target_ids.shape)
+        target_ids = target_ids.detach().cpu().numpy()
+        print(target_ids)
+        len_targets = target_ids.sum()
         out_label_list = []
         flat_preds_list = []
         preds_list = [[] for _ in range(len_targets)]
@@ -352,8 +359,8 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode,
         print(out_label_ids.shape)
         for i in range(out_label_ids.shape[0]):
             for j in range(out_label_ids.shape[1]):
-                if i <= len(target_id):
-                  if out_label_ids[i, j] != pad_token_label_id and target_id[i - 1][j - 1] == 1:
+                if i <= len(target_ids):
+                  if out_label_ids[i, j] != pad_token_label_id and target_ids[i - 1][j - 1] == 1:
                       out_label_list.append(out_label_ids[i][j])
                       flat_preds_list.append(pred_labels[i][j])
                       # nested
@@ -768,7 +775,7 @@ def main():
                                         class_weights, tokenizer, pad_token_label_id)
         else:
             global_step, tr_loss = train(args, train_dataset, dev_dataset, model,
-                                         class_weights, tokenizer, pad_token_label_id, pos_id = False)
+                                         class_weights, tokenizer, pad_token_label_id, use_pos = False)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
     # Predict/Test (without ground truth labels)
@@ -789,7 +796,7 @@ def main():
                                            class_weights=None, mode="test")
         else:
             result, predictions = evaluate(args, model, test_dataset, pad_token_label_id,
-                                           class_weights=None, mode="test", pos_id = False, target_id = True)
+                                           class_weights=None, mode="test", use_pos = False, target_ids = True)
         # Save predictions
         output_test_predictions_file = os.path.join(args.output_dir, "test_labels.txt")
         with open(output_test_predictions_file, "w") as writer:

@@ -108,19 +108,9 @@ def convert_cls_examples_to_features(
             label_ids = label_ids[: (max_seq_length - special_tokens_count)]
             target_verb_ids = target_verb_ids[: (max_seq_length - special_tokens_count)]
 
-        print('\n After Account for [CLS] and [SEP]')
-        print('#######################################')
-        print(f'len target_verb_ids: {len(target_verb_ids)}')
-        print(f'len label ids: {len(label_ids)}')
-
         tokens += [sep_token]
         label_ids += [pad_token_label_id]
         target_verb_ids += [pad_token_label_id]
-
-        print('\n After addinf pad+token_label_id')
-        print('#######################################')
-        print(f'len target_verb_ids: {len(target_verb_ids)}')
-        print(f'len label ids: {len(label_ids)}')
 
         if sep_token_extra:
             # RoBERTa uses an extra separator b/w pairs of sentences
@@ -128,11 +118,6 @@ def convert_cls_examples_to_features(
             label_ids += [pad_token_label_id]
             target_verb_ids += [pad_token_label_id]
         segment_ids = [sequence_a_segment_id] * len(tokens)
-
-        print('\n sep_token_extra conditional')
-        print('#######################################')
-        print(f'len target_verb_ids: {len(target_verb_ids)}')
-        print(f'len label ids: {len(label_ids)}')
 
         if cls_token_at_end:
             tokens += [cls_token]
@@ -142,13 +127,8 @@ def convert_cls_examples_to_features(
         else:
             tokens = [cls_token] + tokens
             label_ids = [pad_token_label_id] + label_ids
-            target_verb_ids += [pad_token_label_id] + target_verb_ids
+            target_verb_ids = [pad_token_label_id] + target_verb_ids
             segment_ids = [cls_token_segment_id] + segment_ids
-
-        print('\n After cls_token_at_end conditional')
-        print('#######################################')
-        print(f'len target_verb_ids: {len(target_verb_ids)}')
-        print(f'len label ids: {len(label_ids)}')
 
         input_ids = tokenizer.convert_tokens_to_ids(tokens)
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
@@ -169,16 +149,10 @@ def convert_cls_examples_to_features(
             label_ids += [pad_token_label_id] * padding_length
             target_verb_ids = [pad_token_label_id] * padding_length
 
-        print('\n After pad_on_left conditional')
-        print('#######################################')
-        print(f'len target_verb_ids: {len(target_verb_ids)}')
-        print(f'len label ids: {len(label_ids)}')
-
         assert len(input_ids) == max_seq_length
         assert len(input_mask) == max_seq_length
         assert len(segment_ids) == max_seq_length
         assert len(label_ids) == max_seq_length
-        print(f'len target_verb_ids: {len(target_verb_ids)}')
         assert len(target_verb_ids) == max_seq_length
 
         # peek data

@@ -346,7 +346,7 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
     eval_loss = eval_loss / nb_eval_steps
     # pred_labels: (batch_size, max_seq_len)
     pred_labels = np.argmax(preds, axis=2)
-    if target_ids:
+    if target_ids is not None:
         print(target_ids.shape)
         target_ids = target_ids.detach().cpu().numpy()
         print(target_ids)

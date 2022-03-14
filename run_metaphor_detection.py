@@ -318,7 +318,7 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
             #probs = torch.nn.functional.softmax(logits, dim=-1)
 
             if args.n_gpu > 1 and mode != "test" :
-                print(f"temp_eval_loss shape{temp_eval_loss.shape}")
+                print(f"temp_eval_loss shape{tmp_eval_loss.shape}")
                 tmp_eval_loss = tmp_eval_loss.mean()  # mean() to average on multi-gpu parallel evaluating
                 eval_loss += tmp_eval_loss.item()
                 

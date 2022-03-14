@@ -46,8 +46,9 @@ def function_convert_raw_trofi_data(input_data_list, output_dir, data_subset, st
     tokens_file_name = os.path.join(output_dir, "{}_tokens.txt".format(data_subset))
     metaphor_pos_file_name = os.path.join(output_dir, "{}_metaphor_pos.txt".format(data_subset))
     metaphor_file_name = os.path.join(output_dir, "{}_metaphor.txt".format(data_subset)) # labels
+    target_binary_file_name = os.path.join(output_dir, "{}_target_binary.txt".format(data_subset)) #binary indicator for target verb
 
-    # extra files
+# extra files
     id_map_file_name = os.path.join(output_dir, "{}_id_map.json".format(data_subset))
     #genre_map_file_name = os.path.join(output_dir, "{}_genre.json".format(data_subset)) # map id to genre
 
@@ -66,7 +67,9 @@ def function_convert_raw_trofi_data(input_data_list, output_dir, data_subset, st
 
     # this will cause last line in file to be blank
     # if that's a problem save data in list then write at once
-    with open(id_file_name, 'w') as id_f, open(tokens_file_name, 'w') as tok_f, open(metaphor_pos_file_name, 'w') as pos_f, open(metaphor_file_name, 'w') as labels_f:
+    with open(id_file_name, 'w') as id_f, open(tokens_file_name, 'w') as tok_f, \
+            open(metaphor_pos_file_name, 'w') as pos_f, open(metaphor_file_name, 'w') as labels_f,\
+                open(target_binary_file_name, "w") as target_b:
         for line in input_data_list:
             id_tuple = str(starting_id) + "-" + line[WORD_IDX]
             if id_tuple not in id_map:
@@ -78,13 +81,16 @@ def function_convert_raw_trofi_data(input_data_list, output_dir, data_subset, st
             labels[int(line[POS_IDX])] = line[LABEL_IDX]
             label = ' '.join(labels)
             pos = ' '.join(str(ast.literal_eval(line[POS_IDX])))
+            target_binaries = [str(0)] * num_words
+            target_binaries[int(line[POS_IDX])] = "1"
+            target_binaries = " ".join(target_binaries)
 
             # write files for gong et al format
             id_f.write(str(id)+'\n')
             tok_f.write(line[TOKENS_IDX]+'\n')
             pos_f.write(pos+'\n')
             labels_f.write(label +'\n')
-
+            target_b.write(target_binaries + "\n")
         write_dict_to_json(id_map_file_name, id_map)
 
         return starting_id

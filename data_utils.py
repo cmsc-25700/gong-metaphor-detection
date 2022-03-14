@@ -12,23 +12,25 @@ class InputExample(object):
     """
     A sentence example for token classification
     """
-    def __init__(self, example_id, words, pos_list, labels=None):
+    def __init__(self, example_id, words, pos_list, labels=None, target_indicator = None):
         self.example_id = example_id
         self.words = words
         self.pos_list = pos_list
         self.labels = labels
+        self.target_inticator = target_indicator
 
 
 class InputFeatures(object):
     """
     Features for an example
     """
-    def __init__(self, input_ids, input_mask, segment_ids, pos_ids, label_ids=None):
+    def __init__(self, input_ids, input_mask, segment_ids, pos_ids, label_ids=None, target_indicator = None):
         self.input_ids = input_ids
         self.input_mask = input_mask
         self.segment_ids = segment_ids
         self.pos_ids = pos_ids
         self.label_ids = label_ids
+        self.target_indicator = target_indicator
 
 
 def read_pos_tags(data_folder, pos_pad="POSPAD"):

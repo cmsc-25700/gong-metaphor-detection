@@ -53,7 +53,7 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 def train(args, train_dataset, dev_dataset, model, class_weights,
-          tokenizer, pad_token_label_id):
+          tokenizer, pad_token_label_id, pos_id = True):
     """ Train the model """
     #if args.local_rank in [-1, 0]:
     #    tb_writer = SummaryWriter()
@@ -156,10 +156,11 @@ def train(args, train_dataset, dev_dataset, model, class_weights,
             model.train()
             batch = tuple(t.to(args.device) for t in batch)
             ### DT Account for input difference
-            if len(batch) < 5:
-              inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": None, "labels": batch[3], "class_weights": weights}
+            if pos_id:
+                inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": batch[4], "class_weights": weights}
             else:
-              inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": batch[4], "class_weights": weights}
+                inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": None,
+                          "labels": batch[3], "class_weights": weights, "target_ind" : batch[4]}
             if args.model_type != "distilbert":
                 inputs["token_type_ids"] = (
                     batch[2] if args.model_type in ["bert", "xlnet"] else None
@@ -196,8 +197,12 @@ def train(args, train_dataset, dev_dataset, model, class_weights,
                     if (
                         args.local_rank == -1 and args.evaluate_during_training
                     ):  # Only evaluate when single GPU otherwise metrics may not average well
-                        results, _ = evaluate(args, model, dev_dataset, pad_token_label_id,
-                                              class_weights, mode="dev")
+                        if args.dataset.lower() == "vua" or args.dataset.lower() == "toefl":
+                            results, _ = evaluate(args, model, dev_dataset, pad_token_label_id,
+                                                  class_weights, mode="dev")
+                        else:
+                            results, _ = evaluate(args, model, dev_dataset, pad_token_label_id,
+                                                  class_weights, mode="dev", pos_id=False, target_id=True)
                         if results['f1'] > best_score:
                             best_score = results['f1']
                             logger.info("Best dev f1 score: {}".format(best_score))
@@ -262,7 +267,7 @@ def train(args, train_dataset, dev_dataset, model, class_weights,
     return global_step, tr_loss / global_step
 
 
-def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode):
+def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode, pos_id = True, target_id = False):
     args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
     # Note that DistributedSampler samples randomly
     eval_sampler = SequentialSampler(eval_dataset) if args.local_rank == -1 else DistributedSampler(eval_dataset)
@@ -289,10 +294,12 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode)
                 inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": None}
             else:
                 weights = torch.FloatTensor(class_weights).to(args.device)
-                if len(batch) < 5:
-                  inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": None, "labels": batch[3], "class_weights": weights}
-                else:
-                  inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": batch[4], "class_weights": weights}
+                if pos_id and not target_id:
+                    inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": batch[4], "class_weights": weights}
+                elif not pos_id and target_id:
+                    inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": None,
+                              "labels": batch[3], "class_weights": weights, "target_ind": batch[4]}
+
             if args.model_type != "distilbert":
                 inputs["token_type_ids"] = (
                     batch[2] if args.model_type in ["bert", "xlnet"] else None
@@ -316,7 +323,6 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode)
             #preds = probs.detach().cpu().numpy()
             if inputs["labels"] is not None:
                 out_label_ids = inputs["labels"].detach().cpu().numpy()
-                ## only get metaphores
 
             else:
                 # ci also may need to be updated for no pos
@@ -333,18 +339,34 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode)
     eval_loss = eval_loss / nb_eval_steps
     # pred_labels: (batch_size, max_seq_len)
     pred_labels = np.argmax(preds, axis=2)
-    
-    out_label_list = []
-    flat_preds_list = []
-    preds_list = [[] for _ in range(out_label_ids.shape[0])]
-    for i in range(out_label_ids.shape[0]):
-        for j in range(out_label_ids.shape[1]):
-            if out_label_ids[i, j] != pad_token_label_id:
-                # flat
-                out_label_list.append(out_label_ids[i][j])
-                flat_preds_list.append(pred_labels[i][j])
-                # nested                
-                preds_list[i].append(pred_labels[i][j])
+    if not target_id:
+        out_label_list = []
+        flat_preds_list = []
+        preds_list = [[] for _ in range(out_label_ids.shape[0])]
+        for i in range(out_label_ids.shape[0]):
+            for j in range(out_label_ids.shape[1]):
+                if out_label_ids[i, j] != pad_token_label_id:
+                    # flat
+                    out_label_list.append(out_label_ids[i][j])
+                    flat_preds_list.append(pred_labels[i][j])
+                    # nested
+                    preds_list[i].append(pred_labels[i][j])
+    else:
+        target_ids = inputs["target_ind"]
+        len_targets = np.array(target_ids).sum()
+        out_label_list = []
+        flat_preds_list = []
+        preds_list = [[] for _ in range(len_targets)]
+
+        for i in range(out_label_ids.shape[0]):
+            for j in range(out_label_ids.shape[1]):
+                if out_label_ids[i, j] != pad_token_label_id and target_ids[i] == 1 and target_ids[j] == 1:
+                    out_label_list.append(out_label_ids[i][j])
+                    flat_preds_list.append(pred_labels[i][j])
+                    # nested
+                    preds_list[i].append(pred_labels[i][j])
+
+
 
     results = None
     if mode != "test":
@@ -368,14 +390,25 @@ def convert_features_to_dataset(features):
     all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
     all_label_ids = torch.tensor([f.label_ids for f in features], dtype=torch.long)
     pos_ids = [f.pos_ids for f in features]
+
     ### DT: Accounting for not having POS data ###
     if None not in pos_ids:
       all_pos_ids = torch.tensor([f.pos_ids for f in features], dtype=torch.long)
       dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_pos_ids,
                             all_label_ids)
-    else: 
+    else:
+      max_len = max([len(f.target_indicator) for f in features])
+      list_targets = []
+      for f in features:
+        if len(f.target_indicator) == max_len:
+          list_targets.append(f.target_indicator)
+        else:
+          target = f.target_indicator + [0] * (max_len - len(f.target_indicator))
+          list_targets.append(target)
+      print(list_targets)
+      target_indcs = torch.tensor(list_targets, dtype = torch.long)
       dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids,
-                            all_label_ids)
+                            all_label_ids, target_indcs)
     return dataset
 
 
@@ -753,8 +786,12 @@ def main():
             os.makedirs(args.output_dir)
         train_dataset, dev_dataset, class_weights = load_and_cache_examples(args, tokenizer,
                                                                             pad_token_label_id, mode="train")
-        global_step, tr_loss = train(args, train_dataset, dev_dataset, model,
-                                     class_weights, tokenizer, pad_token_label_id)
+        if args.dataset.lower() == "vua" or args.dataset.lower() == "toefl":
+            global_step, tr_loss = train(args, train_dataset, dev_dataset, model,
+                                        class_weights, tokenizer, pad_token_label_id)
+        else:
+            global_step, tr_loss = train(args, train_dataset, dev_dataset, model,
+                                         class_weights, tokenizer, pad_token_label_id, pos_id = False)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
     # Predict/Test (without ground truth labels)
@@ -770,8 +807,12 @@ def main():
         model.to(args.device)
 
         test_dataset = load_and_cache_examples(args, tokenizer, pad_token_label_id, mode="test")
-        result, predictions = evaluate(args, model, test_dataset, pad_token_label_id,
-                                       class_weights=None, mode="test")
+        if args.dataset.lower() == "vua" or args.dataset.lower() == "toefl":
+            result, predictions = evaluate(args, model, test_dataset, pad_token_label_id,
+                                           class_weights=None, mode="test")
+        else:
+            result, predictions = evaluate(args, model, test_dataset, pad_token_label_id,
+                                           class_weights=None, mode="test", pos_id = False, target_id = True)
         # Save predictions
         output_test_predictions_file = os.path.join(args.output_dir, "test_labels.txt")
         with open(output_test_predictions_file, "w") as writer:

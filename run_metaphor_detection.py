@@ -3,14 +3,12 @@ Train & Evaluate RoBERTa-Based Metaphor Detection Model
 """
 
 import argparse
-import glob
 import logging
 import os
 import random
 import sys
 import numpy as np
 import torch
-import pickle
 from sklearn.metrics import precision_score, recall_score, f1_score
 from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
@@ -21,7 +19,6 @@ from vua_data_helper import read_vua_examples_from_file, convert_vua_examples_to
 from moh_x_data_helper import read_MOHX_examples_from_file, convert_MOHX_examples_to_features
 from trofi_data_helper import read_trofi_examples_from_file, convert_trofi_examples_to_features
 
-from toefl_data_helper import read_toefl_examples_from_file, convert_toefl_examples_to_features
 from modeling_roberta_metaphor import RobertaForMetaphorDetection
 
 
@@ -31,39 +28,22 @@ from transformers import (
     BertConfig,
     BertForTokenClassification,
     BertTokenizer,
-    CamembertConfig,
-    CamembertForTokenClassification,
-    CamembertTokenizer,
     DistilBertConfig,
     DistilBertForTokenClassification,
     DistilBertTokenizer,
     RobertaConfig,
     RobertaForTokenClassification,
     RobertaTokenizer,
-    XLMRobertaConfig,
-    XLMRobertaForTokenClassification,
-    XLMRobertaTokenizer,
     get_linear_schedule_with_warmup,
 )
 
 logger = logging.getLogger(__name__)
 
-# ALL_MODELS = sum(
-#     (
-#         tuple(conf.pretrained_config_archive_map.keys())
-#         for conf in (BertConfig, RobertaConfig, DistilBertConfig, CamembertConfig, XLMRobertaConfig)
-#     ),
-#     (),
-# )
-
 MODEL_CLASSES = {
     "bert": (BertConfig, BertForTokenClassification, BertTokenizer),
     "roberta": (RobertaConfig, RobertaForTokenClassification, RobertaTokenizer),
     "distilbert": (DistilBertConfig, DistilBertForTokenClassification, DistilBertTokenizer),
-    "camembert": (CamembertConfig, CamembertForTokenClassification, CamembertTokenizer),
-    "xlmroberta": (XLMRobertaConfig, XLMRobertaForTokenClassification, XLMRobertaTokenizer),
 }
-
 
 def set_seed(args):
     random.seed(args.seed)
@@ -305,6 +285,7 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode)
         batch = tuple(t.to(args.device) for t in batch)
         with torch.no_grad():
             if mode == "test":
+                # ci may need to be updated for pos
                 inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": None}
             else:
                 weights = torch.FloatTensor(class_weights).to(args.device)
@@ -338,6 +319,7 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode)
                 ## only get metaphores
 
             else:
+                # ci also may need to be updated for no pos
                 out_label_ids = batch[4].detach().cpu().numpy()
         else:
             #preds = np.append(preds, probs.detach().cpu().numpy(), axis=0)
@@ -345,6 +327,7 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode)
             if inputs["labels"] is not None:
                 out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
             else:
+                # ci also may need to be updated for no pos
                 out_label_ids = np.append(out_label_ids, batch[4].detach().cpu().numpy(), axis=0)
 
     eval_loss = eval_loss / nb_eval_steps
@@ -452,10 +435,11 @@ def load_and_cache_examples(args, tokenizer, pad_token_label_id, mode):
                 pad_token_label_id=pad_token_label_id,
                 pad_feature_val=0,
                 mode=mode
-            )           
-        elif args.dataset.lower() == "toefl":
-            examples = read_toefl_examples_from_file(args.data_dir, mode)
-            features = convert_toefl_examples_to_features(
+            )
+        elif args.dataset.lower() == "trofi":
+            print('trofi')
+            examples = read_trofi_examples_from_file(args.data_dir, mode)
+            features = convert_trofi_examples_to_features(
                 examples,
                 args.max_seq_length,
                 tokenizer,
@@ -476,30 +460,6 @@ def load_and_cache_examples(args, tokenizer, pad_token_label_id, mode):
                 pad_feature_val=0,
                 mode=mode
             )
-        elif args.dataset.lower() == "trofi":
-            print('trofi')
-            examples = read_trofi_examples_from_file(args.data_dir, mode)
-            features = convert_trofi_examples_to_features(
-            examples,
-            args.max_seq_length,
-            tokenizer,
-            cls_token_at_end=bool(args.model_type in ["xlnet"]),
-            # xlnet has a cls token at the end
-            cls_token=tokenizer.cls_token,
-            cls_token_segment_id=2 if args.model_type in ["xlnet"] else 0,
-            sep_token=tokenizer.sep_token,
-            sep_token_extra=bool(args.model_type in ["roberta"]),
-            # roberta uses an extra separator b/w pairs of sentences,
-            pad_on_left=bool(args.model_type in ["xlnet"]),
-            # pad on the left for xlnet
-            pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
-            pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
-            pos_vocab=pos_vocab,
-            pad_pos_id=0,
-            pad_token_label_id=pad_token_label_id,
-            pad_feature_val=0,
-            mode=mode
-        )
             print(features)
             print("FEATURES")
         elif args.dataset.lower() == "moh_x":

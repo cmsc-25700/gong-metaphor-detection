@@ -160,7 +160,7 @@ def train(args, train_dataset, dev_dataset, model, class_weights,
                 inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": batch[4], "class_weights": weights}
             else:
                 inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": None,
-                          "labels": batch[3], "class_weights": weights, "target_ind" : batch[4]}
+                          "labels": batch[3], "class_weights": weights}
             if args.model_type != "distilbert":
                 inputs["token_type_ids"] = (
                     batch[2] if args.model_type in ["bert", "xlnet"] else None
@@ -201,8 +201,9 @@ def train(args, train_dataset, dev_dataset, model, class_weights,
                             results, _ = evaluate(args, model, dev_dataset, pad_token_label_id,
                                                   class_weights, mode="dev")
                         else:
+                            target_id = batch[4]
                             results, _ = evaluate(args, model, dev_dataset, pad_token_label_id,
-                                                  class_weights, mode="dev", pos_id=False, target_id=True)
+                                                  class_weights, mode="dev", pos_id=False, target_id=target_id)
                         if results['f1'] > best_score:
                             best_score = results['f1']
                             logger.info("Best dev f1 score: {}".format(best_score))
@@ -267,7 +268,7 @@ def train(args, train_dataset, dev_dataset, model, class_weights,
     return global_step, tr_loss / global_step
 
 
-def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode, pos_id = True, target_id = False):
+def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode, pos_id = True, target_id = None):
     args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
     # Note that DistributedSampler samples randomly
     eval_sampler = SequentialSampler(eval_dataset) if args.local_rank == -1 else DistributedSampler(eval_dataset)
@@ -294,11 +295,11 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode,
                 inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": None}
             else:
                 weights = torch.FloatTensor(class_weights).to(args.device)
-                if pos_id and not target_id:
+                if pos_id:
                     inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": batch[4], "class_weights": weights}
-                elif not pos_id and target_id:
+                else:
                     inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": None,
-                              "labels": batch[3], "class_weights": weights, "target_ind": batch[4]}
+                              "labels": batch[3], "class_weights": weights}
 
             if args.model_type != "distilbert":
                 inputs["token_type_ids"] = (
@@ -339,7 +340,29 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode,
     eval_loss = eval_loss / nb_eval_steps
     # pred_labels: (batch_size, max_seq_len)
     pred_labels = np.argmax(preds, axis=2)
-    if not target_id:
+    if target_id is not None:
+        print(target_id.shape)
+        target_id = target_id.detach().cpu().numpy()
+        print(target_id)
+        len_targets = target_id.sum()
+        out_label_list = []
+        flat_preds_list = []
+        preds_list = [[] for _ in range(len_targets)]
+        pred_index = 0
+        
+        print(out_label_ids.shape)
+        for i in range(out_label_ids.shape[0]):
+            for j in range(out_label_ids.shape[1]):
+                if i <= len(target_id):
+                  if out_label_ids[i, j] != pad_token_label_id and target_id[i - 1][j - 1] == 1:
+                      out_label_list.append(out_label_ids[i][j])
+                      flat_preds_list.append(pred_labels[i][j])
+                      # nested
+                      preds_list[i].append(pred_labels[i][j])
+                      print("appended")
+              
+
+    else:
         out_label_list = []
         flat_preds_list = []
         preds_list = [[] for _ in range(out_label_ids.shape[0])]
@@ -351,20 +374,7 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights, mode,
                     flat_preds_list.append(pred_labels[i][j])
                     # nested
                     preds_list[i].append(pred_labels[i][j])
-    else:
-        target_ids = inputs["target_ind"]
-        len_targets = np.array(target_ids).sum()
-        out_label_list = []
-        flat_preds_list = []
-        preds_list = [[] for _ in range(len_targets)]
-
-        for i in range(out_label_ids.shape[0]):
-            for j in range(out_label_ids.shape[1]):
-                if out_label_ids[i, j] != pad_token_label_id and target_ids[i] == 1 and target_ids[j] == 1:
-                    out_label_list.append(out_label_ids[i][j])
-                    flat_preds_list.append(pred_labels[i][j])
-                    # nested
-                    preds_list[i].append(pred_labels[i][j])
+        #####
 
 
 

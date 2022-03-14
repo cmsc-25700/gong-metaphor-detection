@@ -3,7 +3,7 @@ Process raw MOHX data into gong format
 """
 import os
 import random
-from gao_data import ExperimentData
+from core.data.gao_data import ExperimentData
 from core.data.process_raw_data_util import convert_raw_cls_data, TRAIN_PERC, TEST_PERC
 
 ### DATA DIRECTORIES

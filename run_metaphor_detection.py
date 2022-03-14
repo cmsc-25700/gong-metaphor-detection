@@ -16,8 +16,7 @@ from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
 from data_utils import InputExample, InputFeatures, read_pos_tags
 from vua_data_helper import read_vua_examples_from_file, convert_vua_examples_to_features
-from moh_x_data_helper import read_MOHX_examples_from_file, convert_MOHX_examples_to_features
-from trofi_data_helper import read_trofi_examples_from_file, convert_trofi_examples_to_features
+from cls_data_helper import read_cls_examples_from_file, convert_cls_examples_to_features
 
 from modeling_roberta_metaphor import RobertaForMetaphorDetection
 
@@ -399,26 +398,20 @@ def convert_features_to_dataset(features):
     all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
     all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
     all_label_ids = torch.tensor([f.label_ids for f in features], dtype=torch.long)
+
     pos_ids = [f.pos_ids for f in features]
 
     ### DT: Accounting for not having POS data ###
+    # CI: Data is vua
     if None not in pos_ids:
-      all_pos_ids = torch.tensor([f.pos_ids for f in features], dtype=torch.long)
-      dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_pos_ids,
+        all_pos_ids = torch.tensor([f.pos_ids for f in features], dtype=torch.long)
+        dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_pos_ids,
                             all_label_ids)
+    # CI: Data NOT vua
     else:
-      max_len = max([len(f.target_indicator) for f in features])
-      list_targets = []
-      for f in features:
-        if len(f.target_indicator) == max_len:
-          list_targets.append(f.target_indicator)
-        else:
-          target = f.target_indicator + [0] * (max_len - len(f.target_indicator))
-          list_targets.append(target)
-      print(list_targets)
-      target_indcs = torch.tensor(list_targets, dtype = torch.long)
-      dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids,
-                            all_label_ids, target_indcs)
+        all_target_verb_ids = torch.tensor([f.target_verb_ids for f in features], dtype=torch.long)
+        dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids,
+                                all_label_ids, all_target_verb_ids)
     return dataset
 
 
@@ -479,10 +472,10 @@ def load_and_cache_examples(args, tokenizer, pad_token_label_id, mode):
                 pad_feature_val=0,
                 mode=mode
             )
-        elif args.dataset.lower() == "trofi":
-            print('trofi')
-            examples = read_trofi_examples_from_file(args.data_dir, mode)
-            features = convert_trofi_examples_to_features(
+        elif args.dataset.lower() in ["trofi", "moh_x"]:
+            print(f"data set: {args.dataset.lower()}")
+            examples = read_cls_examples_from_file(args.data_dir, mode)
+            features = convert_cls_examples_to_features(
                 examples,
                 args.max_seq_length,
                 tokenizer,
@@ -497,38 +490,12 @@ def load_and_cache_examples(args, tokenizer, pad_token_label_id, mode):
                 # pad on the left for xlnet
                 pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
                 pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
-                pos_vocab=pos_vocab,
-                pad_pos_id=0,
                 pad_token_label_id=pad_token_label_id,
                 pad_feature_val=0,
                 mode=mode
             )
             print(features)
             print("FEATURES")
-        elif args.dataset.lower() == "moh_x":
-            examples = read_MOHX_examples_from_file(args.data_dir, mode)
-            features = convert_MOHX_examples_to_features(
-                examples,
-                args.max_seq_length,
-                tokenizer,
-                cls_token_at_end=bool(args.model_type in ["xlnet"]),
-                # xlnet has a cls token at the end
-                cls_token=tokenizer.cls_token,
-                cls_token_segment_id=2 if args.model_type in ["xlnet"] else 0,
-                sep_token=tokenizer.sep_token,
-                sep_token_extra=bool(args.model_type in ["roberta"]),
-                # roberta uses an extra separator b/w pairs of sentences,
-                pad_on_left=bool(args.model_type in ["xlnet"]),
-                # pad on the left for xlnet
-                pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
-                pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
-                pos_vocab=pos_vocab,
-                pad_pos_id=0,
-                pad_token_label_id=pad_token_label_id,
-                pad_feature_val=0,
-                mode=mode
-            )
-
         else:
             logger.info("Unrecognized dataset: {}".format(args.dataset))
         if args.local_rank in [-1, 0]:

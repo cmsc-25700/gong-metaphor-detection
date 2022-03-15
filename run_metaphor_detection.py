@@ -204,7 +204,7 @@ def train(args, train_dataset, dev_dataset, model, class_weights,
                         else: # this is for TroFi and MOH-X data
                             target_ids = batch[4]
                             results, _ = evaluate(args, model, dev_dataset, pad_token_label_id,
-                                                  class_weights, mode="dev", use_pos=False, target_ids=target_ids)
+                                                  class_weights, mode="dev", use_pos=False, use_targets=True)
                         if results['f1'] > best_score:
                             best_score = results['f1']
                             logger.info("Best dev f1 score: {}".format(best_score))
@@ -270,7 +270,7 @@ def train(args, train_dataset, dev_dataset, model, class_weights,
 
 
 def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
-             mode, use_pos = True, target_ids = None):
+             mode, use_pos=True, use_targets=False):
     args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
     # Note that DistributedSampler samples randomly
     eval_sampler = SequentialSampler(eval_dataset) if args.local_rank == -1 else DistributedSampler(eval_dataset)
@@ -288,6 +288,7 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
     nb_eval_steps = 0
     preds = None
     out_label_ids = None
+    target_ids = None
     model.eval()
     for batch in tqdm(eval_dataloader, desc="Evaluating"):
         batch = tuple(t.to(args.device) for t in batch)
@@ -328,11 +329,13 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
             #preds = probs.detach().cpu().numpy()
             if inputs["labels"] is not None:
                 out_label_ids = inputs["labels"].detach().cpu().numpy()
-
             else:
                 # ci also may need to be updated for no pos
                 label_index = 4 if use_pos else 3
                 out_label_ids = batch[label_index].detach().cpu().numpy()
+            # get target verb ind
+            if use_targets:
+                target_ids = batch[5].detach().cpu().numpy()
         else:
             #preds = np.append(preds, probs.detach().cpu().numpy(), axis=0)
             preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
@@ -342,9 +345,15 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
                 # ci also may need to be updated for no pos
                 label_index = 4 if use_pos else 3
                 out_label_ids = np.append(out_label_ids, batch[label_index].detach().cpu().numpy(), axis=0)
+            # get target verb ind
+            if use_targets:
+                target_ids = np.append(target_ids, batch[5].detach().cpu().numpy(), axis=0)
 
     eval_loss = eval_loss / nb_eval_steps
-    # pred_labels: (batch_size, max_seq_len)
+    # preds: (561, 256, 2)
+    # out_label_ids: (561, 256)
+    # len preds_list = 561
+    # target_ids: torch.Size([10, 256])
     pred_labels = np.argmax(preds, axis=2)
     print('preds.shape', preds.shape)
     print(preds)
@@ -353,8 +362,8 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
     print("out_label_ids.shape", out_label_ids.shape)
     print(out_label_ids)
 
-    if target_ids is not None:
-        print(target_ids.shape)
+    if use_targets:
+        print("target_ids.shape", target_ids.shape)
         target_ids = target_ids.detach().cpu().numpy()
         print(target_ids)
         out_label_list = []
@@ -362,7 +371,6 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
         preds_list = [[] for _ in range(out_label_ids.shape[0])]
         print("len(preds_list)", len(preds_list))
 
-        print(out_label_ids.shape)
         for i in range(out_label_ids.shape[0]):
             for j in range(out_label_ids.shape[1]):
                 if i <= len(target_ids):
@@ -798,7 +806,7 @@ def main():
                                            class_weights=None, mode="test")
         else:
             result, predictions = evaluate(args, model, test_dataset, pad_token_label_id,
-                                           class_weights=None, mode="test", use_pos = False, target_ids = True)
+                                           class_weights=None, mode="test", use_pos=False, use_targets=True)
         # Save predictions
         output_test_predictions_file = os.path.join(args.output_dir, "test_labels.txt")
         with open(output_test_predictions_file, "w") as writer:

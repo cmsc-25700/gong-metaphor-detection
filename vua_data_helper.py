@@ -17,10 +17,12 @@ def read_vua_examples_from_file(data_folder, mode):
     """
     examples = []
     prefix = data_folder
+
+    sent_file = open(os.path.join(prefix, mode + "_" + "tokens.txt"), "r")
+    pos_file = open(os.path.join(prefix, mode + "_" + "pos.txt"), "r")
+    label_file = open(os.path.join(prefix, mode + "_" + "metaphor.txt"), "r")
+
     if mode == "train":
-        sent_file = open(os.path.join(prefix, mode+"_"+"tokens.txt"), "r")
-        pos_file = open(os.path.join(prefix, mode+"_"+"pos.txt"), "r")
-        label_file = open(os.path.join(prefix, mode+"_"+"metaphor.txt"), "r")
         example_id = 0
         for (sent_line, pos_line, label_line) in \
              zip(sent_file, pos_file, label_file):
@@ -31,24 +33,22 @@ def read_vua_examples_from_file(data_folder, mode):
                                          words=words, pos_list=pos_list,
                                          labels=labels))
             example_id += 1
-        sent_file.close()
-        pos_file.close()
-        label_file.close()
-    # test data does not have labels
+
+    # ci: test data DOES have labels
     elif mode == "test":
-        sent_file = open(os.path.join(prefix, mode+"_"+"tokens.txt"), "r")
-        pos_file = open(os.path.join(prefix, mode+"_"+"pos.txt"), "r")
         example_id = 0
-        for (sent_line, pos_line) in \
-             zip(sent_file, pos_file):
+        for (sent_line, pos_line, label_line) in \
+             zip(sent_file, pos_file, label_file):
             words = sent_line.strip().split()
             pos_list = pos_line.strip().split()
-            pseudo_labels = [0] * len(words)
+            # pseudo_labels = [0] * len(words) # ci: so we can compute perf metrics during test
+            labels = [int(label) for label in label_line.strip().split()]
             examples.append(InputExample(example_id="{}-{}".format(mode, str(example_id)),
                                          words=words, pos_list=pos_list,
-                                         labels=pseudo_labels))
-        sent_file.close()
-        pos_file.close()
+                                         labels=labels))
+    sent_file.close()
+    pos_file.close()
+    label_file.close()
     return examples
                                          
 

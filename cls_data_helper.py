@@ -32,7 +32,7 @@ def read_cls_examples_from_file(data_folder, mode):
                                          labels=labels,
                                          target_verbs=targets))
             example_id += 1
-    # test data does not have labels
+    # CI test data DOES have labels
     elif mode == "test":
         example_id = 0
         # ci: adding the real label back so we can compute perf metric during predict

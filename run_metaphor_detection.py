@@ -386,18 +386,18 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
     print("len(preds_list)", len(preds_list))
     print(preds_list)
     results = None
-    if mode != "test":
-        pos_label = 1 # ci: set to 0 for debugging... bc all prediction are 0
-        results = {
-            "loss": eval_loss,
-            "precision": precision_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label),
-            "recall": recall_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label),
-            "f1": f1_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label)
-            }
-        logger.info("***** Eval results *****")
-        for key in sorted(results.keys()):
-            logger.info("  %s = %s", key, str(results[key]))
-            
+    # if mode != "test":
+    pos_label = 1 # ci: set to 0 for debugging... bc all prediction are 0
+    results = {
+        "loss": eval_loss,
+        "precision": precision_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label),
+        "recall": recall_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label),
+        "f1": f1_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label)
+        }
+    logger.info("***** Eval results *****")
+    for key in sorted(results.keys()):
+        logger.info("  %s = %s", key, str(results[key]))
+
     return results, preds_list
 
 

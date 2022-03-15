@@ -17,18 +17,21 @@ def read_cls_examples_from_file(data_folder, mode):
     prefix = data_folder
 
     sent_file = open(os.path.join(prefix, mode + "_" + "tokens.txt"), "r")
+    pos_file = open(os.path.join(prefix, mode + "_" + "postxt"), "r")
     label_file = open(os.path.join(prefix, mode + "_" + "metaphor.txt"), "r")
     target_indicator_file = open(os.path.join(prefix, mode + "_" + "target_verb.txt"), "r")
 
     if mode == "train":
         example_id = 0
-        for (sent_line, label_line, target_line) in \
-                zip(sent_file, label_file, target_indicator_file):
+        for (sent_line, pos_line, label_line, target_line) in \
+                zip(sent_file, pos_file, label_file, target_indicator_file):
             words = sent_line.strip().split()
+            pos_list = pos_line.strip().split()
             labels = [int(label) for label in label_line.strip().split()]
             targets = [int(indc) for indc in target_line.strip().split()]
             examples.append(InputExample(example_id="{}-{}".format(mode, str(example_id)),
-                                         words=words, pos_list=None,
+                                         words=words,
+                                         pos_list=pos_list,
                                          labels=labels,
                                          target_verbs=targets))
             example_id += 1
@@ -36,18 +39,21 @@ def read_cls_examples_from_file(data_folder, mode):
     elif mode == "test":
         example_id = 0
         # ci: adding the real label back so we can compute perf metric during predict
-        for (sent_line, label_line, target_line) in \
-                zip(sent_file, label_file, target_indicator_file):
+        for (sent_line, pos_line, label_line, target_line) in \
+                zip(sent_file, pos_file, label_file, target_indicator_file):
             words = sent_line.strip().split()
+            pos_list = pos_line.strip().split()
             labels = [int(label) for label in label_line.strip().split()]
             # pseudo_labels = [0] * len(words)
             targets = [int(indc) for indc in target_line.strip().split()]
             examples.append(InputExample(example_id="{}-{}".format(mode, str(example_id)),
-                                         words=words, pos_list=None,
+                                         words=words,
+                                         pos_list=pos_list,
                                          labels=labels,
                                          target_verbs=targets))
 
     sent_file.close()
+    pos_file.close()
     label_file.close()
     target_indicator_file.close()
 

@@ -351,9 +351,10 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
 
     eval_loss = eval_loss / nb_eval_steps
     # preds: (561, 256, 2)
+    # pred_labels: pred_labels.shape (561, 256)
     # out_label_ids: (561, 256)
+    # target_ids: (561, 256)
     # len preds_list = 561
-    # target_ids: torch.Size([10, 256])
     pred_labels = np.argmax(preds, axis=2)
     print('preds.shape', preds.shape)
     print(preds)
@@ -364,7 +365,6 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
 
     if use_targets:
         print("target_ids.shape", target_ids.shape)
-        target_ids = target_ids.detach().cpu().numpy()
         print(target_ids)
         out_label_list = []
         flat_preds_list = []
@@ -374,12 +374,11 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
         for i in range(out_label_ids.shape[0]):
             for j in range(out_label_ids.shape[1]):
                 if i <= len(target_ids):
-                  if out_label_ids[i, j] != pad_token_label_id and target_ids[i - 1][j - 1] == 1:
+                  if out_label_ids[i, j] != pad_token_label_id and target_ids[i][j] == 1:
                       out_label_list.append(out_label_ids[i][j])
                       flat_preds_list.append(pred_labels[i][j])
                       # nested
                       preds_list[i].append(pred_labels[i][j])
-                      print("appended")
     else:
         out_label_list = []
         flat_preds_list = []
@@ -392,7 +391,6 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
                     flat_preds_list.append(pred_labels[i][j])
                     # nested
                     preds_list[i].append(pred_labels[i][j])
-
 
     results = None
     if mode != "test":

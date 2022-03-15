@@ -294,15 +294,16 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
         batch = tuple(t.to(args.device) for t in batch)
         with torch.no_grad():
             if mode == "test":
-                if use_pos:
+                # if mode is test, we don't have labels
+                if use_pos: # vua data
                     inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": None}
-                else:
+                else: # trofi mohx data
                     inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": None, "labels": None}
             else: # mode is not "test"
                 weights = torch.FloatTensor(class_weights).to(args.device)
-                if use_pos:
+                if use_pos: # vua data
                     inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": batch[3], "labels": batch[4], "class_weights": weights}
-                else:
+                else: # trofi mohx data
                     inputs = {"input_ids": batch[0], "attention_mask": batch[1], "pos_ids": None, "labels": batch[3], "class_weights": weights}
 
             if args.model_type != "distilbert":
@@ -411,17 +412,17 @@ def convert_features_to_dataset(features):
 
     pos_ids = [f.pos_ids for f in features]
 
-    ### DT: Accounting for not having POS data ###
-    # CI: Data is vua
-    if None not in pos_ids:
+    if None not in pos_ids: # vua data. has pos. don't use target verb ids
         all_pos_ids = torch.tensor([f.pos_ids for f in features], dtype=torch.long)
-        dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_pos_ids,
-                            all_label_ids)
+        dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids,
+                                all_pos_ids,
+                                all_label_ids)
     # CI: Data NOT vua
-    else:
+    else: # trofi or mohx data. include target verb ids but not pos
         all_target_verb_ids = torch.tensor([f.target_verb_ids for f in features], dtype=torch.long)
         dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids,
-                                all_label_ids, all_target_verb_ids)
+                                all_label_ids,
+                                all_target_verb_ids)
     return dataset
 
 

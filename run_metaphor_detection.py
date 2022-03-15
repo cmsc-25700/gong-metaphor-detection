@@ -9,7 +9,7 @@ import random
 import sys
 import numpy as np
 import torch
-from sklearn.metrics import precision_score, recall_score, f1_score
+from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
 from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
 from torch.utils.data.distributed import DistributedSampler
@@ -394,7 +394,8 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
         "loss": eval_loss,
         "precision": precision_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label),
         "recall": recall_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label),
-        "f1": f1_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label)
+        "f1": f1_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label),
+        "accuracy": accuracy_score(out_label_list, flat_preds_list)
         }
     logger.info("***** Eval results *****")
     for key in sorted(results.keys()):

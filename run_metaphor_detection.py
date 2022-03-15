@@ -356,28 +356,23 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
     # target_ids: (561, 256)
     # len preds_list = 561
     pred_labels = np.argmax(preds, axis=2)
+    out_label_list = []
+    flat_preds_list = []
+    preds_list = [[] for _ in range(out_label_ids.shape[0])]
 
     if use_targets:
         print("target_ids.shape", target_ids.shape)
         print(target_ids)
-        out_label_list = []
-        flat_preds_list = []
-        preds_list = [[] for _ in range(out_label_ids.shape[0])]
 
         for i in range(out_label_ids.shape[0]):
             for j in range(out_label_ids.shape[1]):
                 if out_label_ids[i, j] != pad_token_label_id:
                     if target_ids[i][j] == 1:
-                        print(target_ids[i][j])
                         out_label_list.append(out_label_ids[i][j])
                         flat_preds_list.append(pred_labels[i][j])
                         # nested
                         preds_list[i].append(pred_labels[i][j])
-                        print("appended results")
     else:
-        out_label_list = []
-        flat_preds_list = []
-        preds_list = [[] for _ in range(out_label_ids.shape[0])]
         for i in range(out_label_ids.shape[0]):
             for j in range(out_label_ids.shape[1]):
                 if out_label_ids[i, j] != pad_token_label_id:
@@ -388,9 +383,11 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
                     preds_list[i].append(pred_labels[i][j])
 
     print("len(out_label_list)", len(out_label_list))
+    print(out_label_list)
     print("len(flat_preds_list)", len(flat_preds_list))
+    print(flat_preds_list)
     print("len(preds_list)", len(preds_list))
-
+    print(preds_list)
     results = None
     if mode != "test":
         results = {

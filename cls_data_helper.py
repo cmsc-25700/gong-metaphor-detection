@@ -35,14 +35,16 @@ def read_cls_examples_from_file(data_folder, mode):
     # test data does not have labels
     elif mode == "test":
         example_id = 0
-        for (sent_line, target_line) in \
-                zip(sent_file, target_indicator_file):
+        # ci: adding the real label back so we can compute perf metric during predict
+        for (sent_line, label_line, target_line) in \
+                zip(sent_file, label_file, target_indicator_file):
             words = sent_line.strip().split()
-            pseudo_labels = [0] * len(words)
+            labels = [int(label) for label in label_line.strip().split()]
+            # pseudo_labels = [0] * len(words)
             targets = [int(indc) for indc in target_line.strip().split()]
             examples.append(InputExample(example_id="{}-{}".format(mode, str(example_id)),
                                          words=words, pos_list=None,
-                                         labels=pseudo_labels,
+                                         labels=labels,
                                          target_verbs=targets))
 
     sent_file.close()

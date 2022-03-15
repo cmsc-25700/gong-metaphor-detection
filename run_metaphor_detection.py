@@ -346,16 +346,20 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
     eval_loss = eval_loss / nb_eval_steps
     # pred_labels: (batch_size, max_seq_len)
     pred_labels = np.argmax(preds, axis=2)
+    print('preds.shape', preds.shape)
+    print(preds)
+    print("pred_labels.shape", pred_labels.shape)
+    print(pred_labels)
+
     if target_ids is not None:
         print(target_ids.shape)
         target_ids = target_ids.detach().cpu().numpy()
         print(target_ids)
-        len_targets = target_ids.sum()
         out_label_list = []
         flat_preds_list = []
-        preds_list = [[] for _ in range(len_targets)]
-        pred_index = 0
-        
+        preds_list = [[] for _ in range(out_label_ids.shape[0])]
+
+
         print(out_label_ids.shape)
         for i in range(out_label_ids.shape[0]):
             for j in range(out_label_ids.shape[1]):
@@ -366,8 +370,6 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
                       # nested
                       preds_list[i].append(pred_labels[i][j])
                       print("appended")
-              
-
     else:
         out_label_list = []
         flat_preds_list = []
@@ -380,8 +382,6 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
                     flat_preds_list.append(pred_labels[i][j])
                     # nested
                     preds_list[i].append(pred_labels[i][j])
-        #####
-
 
 
     results = None

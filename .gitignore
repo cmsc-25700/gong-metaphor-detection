@@ -3,7 +3,9 @@ __MACOSX/*
 output/*
 data/VUA/cached_train_roberta-large_256
 .idea/*
-
+data/MOH_X/cached_train_roberta-large_256
+data/Trofi/cached_train_roberta-large_256
+data/VUA/cached_test_roberta-large_256
 **/.DS_Store
 
 # Byte-compiled / optimized / DLL files

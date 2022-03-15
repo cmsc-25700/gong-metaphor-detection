@@ -369,6 +369,7 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
                 if i <= len(target_ids):
                     if out_label_ids[i, j] != pad_token_label_id:
                         print("target_id", target_ids[i][j] == 1)
+                        print(target_ids[i][j])
                         out_label_list.append(out_label_ids[i][j])
                         flat_preds_list.append(pred_labels[i][j])
                         # nested

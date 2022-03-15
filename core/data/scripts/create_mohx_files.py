@@ -6,6 +6,8 @@ import random
 from core.data.gao_data import ExperimentData
 from core.data.process_raw_data_util import convert_raw_cls_data, TRAIN_PERC, TEST_PERC
 
+random.seed(31522)
+
 ### DATA DIRECTORIES
 input_data_path = os.path.join("resources", "metaphor-in-context", "data")
 output_dir = os.path.join("data", "MOH_X")

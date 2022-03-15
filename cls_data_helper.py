@@ -17,7 +17,7 @@ def read_cls_examples_from_file(data_folder, mode):
     prefix = data_folder
 
     sent_file = open(os.path.join(prefix, mode + "_" + "tokens.txt"), "r")
-    pos_file = open(os.path.join(prefix, mode + "_" + "postxt"), "r")
+    pos_file = open(os.path.join(prefix, mode + "_" + "pos.txt"), "r")
     label_file = open(os.path.join(prefix, mode + "_" + "metaphor.txt"), "r")
     target_indicator_file = open(os.path.join(prefix, mode + "_" + "target_verb.txt"), "r")
 

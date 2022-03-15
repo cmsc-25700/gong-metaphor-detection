@@ -358,7 +358,7 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
         out_label_list = []
         flat_preds_list = []
         preds_list = [[] for _ in range(out_label_ids.shape[0])]
-
+        print("len(preds_list)", len(preds_list))
 
         print(out_label_ids.shape)
         for i in range(out_label_ids.shape[0]):

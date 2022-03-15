@@ -387,18 +387,18 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
     print("len(preds_list)", len(preds_list))
     print(preds_list)
     results = None
-    if mode != "test": # ci: doesn't make sense to compute in "test" bc all labels assumed 0
-        pos_label = 1 # ci: set to 0 for debugging
-        results = {
-            "loss": eval_loss,
-            "loss": eval_loss,
-            "precision": precision_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label),
-            "recall": recall_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label),
-            "f1": f1_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label)
-            }
-        logger.info("***** Eval results *****")
-        for key in sorted(results.keys()):
-            logger.info("  %s = %s", key, str(results[key]))
+    # if mode != "test": # ci: doesn't make sense to compute in "test" if all labels assumed 0
+    pos_label = 1 # ci: set to 0 for debugging
+    results = {
+        "loss": eval_loss,
+        "loss": eval_loss,
+        "precision": precision_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label),
+        "recall": recall_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label),
+        "f1": f1_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label)
+        }
+    logger.info("***** Eval results *****")
+    for key in sorted(results.keys()):
+        logger.info("  %s = %s", key, str(results[key]))
 
     return results, preds_list
 

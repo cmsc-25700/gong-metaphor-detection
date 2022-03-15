@@ -19,6 +19,9 @@ Library Requirements:
 
 ### Data
 We are using the processed data from our project to replicate [gao et al](https://github.com/cmsc-25700/metaphor-detection)
+1. MOH-X
+2. TroFi
+3. VUA
 
 ### Models
 See [shell-scripts](shell-scripts) for code to train and predict

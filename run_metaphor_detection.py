@@ -44,6 +44,7 @@ MODEL_CLASSES = {
     "distilbert": (DistilBertConfig, DistilBertForTokenClassification, DistilBertTokenizer),
 }
 
+
 def set_seed(args):
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -51,8 +52,9 @@ def set_seed(args):
     if args.n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
 
+
 def train(args, train_dataset, dev_dataset, model, class_weights,
-          tokenizer, pad_token_label_id, use_pos = True):
+          tokenizer, pad_token_label_id, use_pos):
     """ Train the model """
     #if args.local_rank in [-1, 0]:
     #    tb_writer = SummaryWriter()
@@ -200,11 +202,10 @@ def train(args, train_dataset, dev_dataset, model, class_weights,
                     ):  # Only evaluate when single GPU otherwise metrics may not average well
                         if args.dataset.lower() == "vua" or args.dataset.lower() == "toefl":
                             results, _ = evaluate(args, model, dev_dataset, pad_token_label_id,
-                                                  class_weights, mode="dev")
+                                                  class_weights, mode="dev", use_pos=args.use_pos)
                         else: # this is for TroFi and MOH-X data
-                            target_ids = batch[4]
                             results, _ = evaluate(args, model, dev_dataset, pad_token_label_id,
-                                                  class_weights, mode="dev", use_pos=False, use_targets=True)
+                                                  class_weights, mode="dev", use_pos=args.use_pos, use_targets=True)
                         if results['f1'] > best_score:
                             best_score = results['f1']
                             logger.info("Best dev f1 score: {}".format(best_score))
@@ -270,7 +271,7 @@ def train(args, train_dataset, dev_dataset, model, class_weights,
 
 
 def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
-             mode, use_pos=True, use_targets=False):
+             mode, use_pos, use_targets=False):
     args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
     # Note that DistributedSampler samples randomly
     eval_sampler = SequentialSampler(eval_dataset) if args.local_rank == -1 else DistributedSampler(eval_dataset)
@@ -336,7 +337,8 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
                 out_label_ids = batch[label_index].detach().cpu().numpy()
             # get target verb ind
             if use_targets:
-                target_ids = batch[4].detach().cpu().numpy()
+                targets_idx = 5 if use_pos else 4
+                target_ids = batch[targets_idx].detach().cpu().numpy()
         else:
             #preds = np.append(preds, probs.detach().cpu().numpy(), axis=0)
             preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
@@ -348,7 +350,8 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
                 out_label_ids = np.append(out_label_ids, batch[label_index].detach().cpu().numpy(), axis=0)
             # get target verb ind
             if use_targets:
-                target_ids = np.append(target_ids, batch[4].detach().cpu().numpy(), axis=0)
+                targets_idx = 5 if use_pos else 4
+                target_ids = np.append(target_ids, batch[targets_idx].detach().cpu().numpy(), axis=0)
 
     eval_loss = eval_loss / nb_eval_steps
     # preds: (561, 256, 2)
@@ -404,26 +407,36 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
     return results, preds_list
 
 
-def convert_features_to_dataset(features):
+def convert_features_to_dataset(args, features):
     # Convert to Tensors and build dataset
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
     all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
     all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
     all_label_ids = torch.tensor([f.label_ids for f in features], dtype=torch.long)
+    all_pos_ids = torch.tensor([f.pos_ids for f in features], dtype=torch.long)
 
-    pos_ids = [f.pos_ids for f in features]
-
-    if None not in pos_ids: # vua data. has pos. don't use target verb ids
-        all_pos_ids = torch.tensor([f.pos_ids for f in features], dtype=torch.long)
-        dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids,
-                                all_pos_ids,
-                                all_label_ids)
-    # CI: Data NOT vua
-    else: # trofi or mohx data. include target verb ids but not pos
-        all_target_verb_ids = torch.tensor([f.target_verb_ids for f in features], dtype=torch.long)
-        dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids,
-                                all_label_ids,
-                                all_target_verb_ids)
+    if args.use_pos: # include pos in data set
+        if args.dataset.lower() == "vua":
+            all_pos_ids = torch.tensor([f.pos_ids for f in features], dtype=torch.long)
+            dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids,
+                                    all_pos_ids,
+                                    all_label_ids)
+        else: # trofi or mohx data. include target verb ids
+            all_target_verb_ids = torch.tensor([f.target_verb_ids for f in features], dtype=torch.long)
+            dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids,
+                                    all_pos_ids,
+                                    all_label_ids,
+                                    all_target_verb_ids)
+    else: # don't include pos in dataset
+        if args.dataset.lower() == "vua":
+            all_pos_ids = torch.tensor([f.pos_ids for f in features], dtype=torch.long)
+            dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids,
+                                    all_label_ids)
+        else: # trofi or mohx data. include target verb ids
+            all_target_verb_ids = torch.tensor([f.target_verb_ids for f in features], dtype=torch.long)
+            dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids,
+                                    all_label_ids,
+                                    all_target_verb_ids)
     return dataset
 
 
@@ -486,6 +499,7 @@ def load_and_cache_examples(args, tokenizer, pad_token_label_id, mode):
             )
         elif args.dataset.lower() in ["trofi", "moh_x"]:
             print(f"data set: {args.dataset.lower()}")
+            pos_vocab = read_pos_tags(args.data_dir)
             examples = read_cls_examples_from_file(args.data_dir, mode)
             features = convert_cls_examples_to_features(
                 examples,
@@ -502,6 +516,8 @@ def load_and_cache_examples(args, tokenizer, pad_token_label_id, mode):
                 # pad on the left for xlnet
                 pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
                 pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
+                pos_vocab=pos_vocab,
+                pad_pos_id=0,
                 pad_token_label_id=pad_token_label_id,
                 pad_feature_val=0,
                 mode=mode
@@ -523,21 +539,20 @@ def load_and_cache_examples(args, tokenizer, pad_token_label_id, mode):
         train_ratio = 0.8
         train_inds = np.random.choice(range(total_size), size=int(total_size*train_ratio), replace=False)
         train_features = [features[ind] for ind in train_inds]
-        train_dataset = convert_features_to_dataset(train_features)
+        train_dataset = convert_features_to_dataset(args, train_features)
         dev_features = [features[ind] for ind in range(total_size) if ind not in set(train_inds)]
-        dev_dataset = convert_features_to_dataset(dev_features)
+        dev_dataset = convert_features_to_dataset(args, dev_features)
         class_weights = get_class_weights(features)
         print("train size: {}, dev_size: {}".format(len(train_features), len(dev_features)))
         return train_dataset, dev_dataset, class_weights
     elif mode == "test":
-        dataset = convert_features_to_dataset(features)
+        dataset = convert_features_to_dataset(args, features)
         return dataset
     else:
         print("INVALID mode: {}".format(mode))
         sys.exit(0)
     
     return dataset
-
 
 
 def main():
@@ -777,10 +792,10 @@ def main():
                                                                             pad_token_label_id, mode="train")
         if args.dataset.lower() == "vua" or args.dataset.lower() == "toefl":
             global_step, tr_loss = train(args, train_dataset, dev_dataset, model,
-                                        class_weights, tokenizer, pad_token_label_id)
+                                        class_weights, tokenizer, pad_token_label_id, use_pos=args.use_pos)
         else:
             global_step, tr_loss = train(args, train_dataset, dev_dataset, model,
-                                         class_weights, tokenizer, pad_token_label_id, use_pos = False)
+                                         class_weights, tokenizer, pad_token_label_id, use_pos=args.use_pos)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
     # Predict/Test (without ground truth labels)
@@ -798,10 +813,10 @@ def main():
         test_dataset = load_and_cache_examples(args, tokenizer, pad_token_label_id, mode="test")
         if args.dataset.lower() == "vua" or args.dataset.lower() == "toefl":
             result, predictions = evaluate(args, model, test_dataset, pad_token_label_id,
-                                           class_weights=None, mode="test")
+                                           class_weights=None, mode="test", use_pos=args.use_pos)
         else:
             result, predictions = evaluate(args, model, test_dataset, pad_token_label_id,
-                                           class_weights=None, mode="test", use_pos=False, use_targets=True)
+                                           class_weights=None, mode="test", use_pos=args.use_pos, use_targets=True)
         # Save predictions
         output_test_predictions_file = os.path.join(args.output_dir, "test_labels.txt")
         with open(output_test_predictions_file, "w") as writer:

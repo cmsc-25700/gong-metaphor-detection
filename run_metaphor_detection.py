@@ -350,6 +350,8 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
     print(preds)
     print("pred_labels.shape", pred_labels.shape)
     print(pred_labels)
+    print("out_label_ids.shape", out_label_ids.shape)
+    print(out_label_ids)
 
     if target_ids is not None:
         print(target_ids.shape)

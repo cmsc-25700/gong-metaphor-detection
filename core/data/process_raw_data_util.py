@@ -24,6 +24,7 @@ and save test_ids.txt, test_tokens.txt and test_pos.txt to the folder [DATA_DIR]
 """
 import os
 import ast
+import spacy
 from core.data.io_util import write_dict_to_json
 
 TRAIN_PERC = 0.75
@@ -34,7 +35,8 @@ def convert_raw_cls_data(input_data_list, output_dir, data_subset, starting_id,
                                   word_idx,
                                   tokens_idx,
                                   label_idx,
-                                  verb_idx):
+                                  verb_idx,
+                                  get_pos=False):
     """
     CONVERT CLASSIFICATION DATA
     This data has no POS label. ONLY HAS LABEL FOR TARGET VERB.
@@ -61,7 +63,8 @@ def convert_raw_cls_data(input_data_list, output_dir, data_subset, starting_id,
                 id_map[id_tuple] = starting_id
                 starting_id += 1
             id = id_map[id_tuple]
-            num_words = len(line[tokens_idx].split(" "))
+            tokens = line[tokens_idx].strip()
+            num_words = len(tokens.split(" "))
             labels = [str(0)] * num_words
             labels[int(line[verb_idx])] = line[label_idx]
             label = ' '.join(labels)
@@ -71,12 +74,23 @@ def convert_raw_cls_data(input_data_list, output_dir, data_subset, starting_id,
 
             # write files for gong et al format
             id_f.write(str(id)+'\n')
-            tok_f.write(line[tokens_idx]+'\n')
+            tok_f.write(tokens+'\n')
             labels_f.write(label +'\n')
             target_f.write(target_verb+ "\n")
         write_dict_to_json(id_map_file_name, id_map)
 
-        return starting_id
+    # loop again
+    if get_pos:
+        nlp = spacy.load("en_core_web_lg")
+        pos_file_name = os.path.join(output_dir, "{}_pos.txt".format(data_subset))
+        with open(pos_file_name, 'w') as pos_f:
+            for i, line in enumerate(input_data_list):
+                tokens = line[tokens_idx].strip()
+                doc = nlp(tokens)
+                pos_str = " ".join([token.pos_ for token in doc])
+                pos_f.write(pos_str + "\n")
+
+    return starting_id
 
 
 def convert_raw_vua_data(input_data_list, output_dir, data_subset, starting_id):
@@ -132,4 +146,4 @@ def convert_raw_vua_data(input_data_list, output_dir, data_subset, starting_id):
         # write maps
         write_dict_to_json(genre_map_file_name, genre_map)
         write_dict_to_json(id_map_file_name, id_map)
-        return starting_id
+    return starting_id

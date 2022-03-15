@@ -38,4 +38,5 @@ for subset, data in mode_data_dict.items():
                                       WORD_IDX,
                                       TOKENS_IDX,
                                       LABEL_IDX,
-                                      VERB_IDX)
+                                      VERB_IDX,
+                                      get_pos=True)

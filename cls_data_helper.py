@@ -100,7 +100,7 @@ def convert_cls_examples_to_features(
             # a word might be split into multiple tokens
             word_tokens = tokenizer.tokenize(word)
             tokens += list(word_tokens)
-            # ci: what happens when encounter new pos?
+            # ci: what happens when encounter new pos? should only happen in do_predict
             pos_ids += [pos_vocab[pos] if pos in pos_vocab else pad_pos_id] + [pad_pos_id] * (len(word_tokens)-1)
 
             # Use the real label id for the first token of the word,

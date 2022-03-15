@@ -361,9 +361,6 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
     preds_list = [[] for _ in range(out_label_ids.shape[0])]
 
     if use_targets:
-        print("target_ids.shape", target_ids.shape)
-        print(target_ids)
-
         for i in range(out_label_ids.shape[0]):
             for j in range(out_label_ids.shape[1]):
                 if out_label_ids[i, j] != pad_token_label_id:
@@ -390,7 +387,7 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
     print(preds_list)
     results = None
     if mode != "test":
-        pos_label = 0 # ci: set to 0 for debugging... bc all prediction are 0
+        pos_label = 1 # ci: set to 0 for debugging... bc all prediction are 0
         results = {
             "loss": eval_loss,
             "precision": precision_score(out_label_list, flat_preds_list, average="binary", pos_label=pos_label),

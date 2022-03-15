@@ -335,7 +335,7 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
                 out_label_ids = batch[label_index].detach().cpu().numpy()
             # get target verb ind
             if use_targets:
-                target_ids = batch[5].detach().cpu().numpy()
+                target_ids = batch[4].detach().cpu().numpy()
         else:
             #preds = np.append(preds, probs.detach().cpu().numpy(), axis=0)
             preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
@@ -347,7 +347,7 @@ def evaluate(args, model, eval_dataset, pad_token_label_id, class_weights,
                 out_label_ids = np.append(out_label_ids, batch[label_index].detach().cpu().numpy(), axis=0)
             # get target verb ind
             if use_targets:
-                target_ids = np.append(target_ids, batch[5].detach().cpu().numpy(), axis=0)
+                target_ids = np.append(target_ids, batch[4].detach().cpu().numpy(), axis=0)
 
     eval_loss = eval_loss / nb_eval_steps
     # preds: (561, 256, 2)
